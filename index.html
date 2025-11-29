@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GitHub 无限网盘</title>
+  <title>GitHub 网盘</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
@@ -21,10 +21,15 @@
   <div id="loginOverlay" class="fixed inset-0 z-[100] bg-slate-100 flex items-center justify-center hidden">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
       <div class="mb-6 text-slate-800 flex justify-center"><i class="ph ph-github-logo text-6xl"></i></div>
-      <h2 class="text-2xl font-bold mb-2">GitHub 私有网盘</h2>
-      <p class="text-gray-400 text-sm mb-6">请输入访问密码</p>
-      <input type="password" id="passwordInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-slate-800 transition" placeholder="Password">
-      <button onclick="checkLogin()" class="w-full bg-slate-800 hover:bg-black text-white font-bold py-3 rounded-lg transition shadow-lg">进入网盘</button>
+      <h2 class="text-2xl font-bold mb-2">配置 GitHub 令牌</h2>
+      <p class="text-gray-400 text-sm mb-4">为了安全，请在此输入 Token，不要写在代码里</p>
+      <div class="text-left text-xs text-gray-400 mb-2 space-y-1">
+          <p>1. 在 GitHub Settings -> Developer settings 申请</p>
+          <p>2. 权限勾选 <b>repo</b></p>
+          <p>3. 粘贴以 <b>ghp_</b> 开头的密钥</p>
+      </div>
+      <input type="password" id="tokenInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-slate-800 transition font-mono text-sm" placeholder="ghp_xxxxxxxxxxxx">
+      <button onclick="saveTokenAndLogin()" class="w-full bg-slate-800 hover:bg-black text-white font-bold py-3 rounded-lg transition shadow-lg">保存并登录</button>
     </div>
   </div>
 
@@ -68,7 +73,7 @@
             <i class="ph ph-folder-simple-plus text-lg"></i><span>新建文件夹</span>
         </button>
         <div class="w-px h-8 bg-slate-200 mx-2"></div>
-        <button onclick="logout()" class="text-slate-400 hover:text-red-500 transition" title="退出"><i class="ph ph-sign-out text-xl"></i></button>
+        <button onclick="logout()" class="text-slate-400 hover:text-red-500 transition" title="退出/更换Token"><i class="ph ph-sign-out text-xl"></i></button>
       </div>
     </header>
 
@@ -123,30 +128,59 @@
     const GITHUB_CONFIG = {
         username: "Nolan180940",     // 例如: "Nolan"
         repo: "my-drive-data",          // 你创建的用于存文件的Public仓库名
-        token: "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",    // Personal Access Token (权限选 repo)
         branch: "main"                  // 分支名
+        // 注意：Token 不再写在这里！
     };
-    
-    const ADMIN_PASS = 'admin'; // 你的登录密码
     // ======================================================
 
     let currentPath = ''; 
+    let userToken = ''; // Token 将存储在这里
 
     // 初始化检查
     const params = new URLSearchParams(window.location.search);
     const shareFile = params.get('f');
-    if (shareFile) { showViewer(shareFile); } 
-    else { document.getElementById('loginOverlay').classList.remove('hidden'); }
+
+    if (shareFile) { 
+        showViewer(shareFile); 
+    } else {
+        // 尝试从本地存储加载 Token
+        const savedToken = localStorage.getItem('gh_drive_token');
+        if (savedToken) {
+            userToken = savedToken;
+            checkLogin(true); // 自动登录
+        } else {
+            document.getElementById('loginOverlay').classList.remove('hidden'); 
+        }
+    }
 
     // 认证与导航
-    window.checkLogin = function() {
-        if (document.getElementById('passwordInput').value === ADMIN_PASS) {
-            document.getElementById('loginOverlay').classList.add('hidden');
-            document.getElementById('driveApp').classList.remove('hidden');
-            refreshDrive();
-        } else { alert('密码错误'); }
+    window.saveTokenAndLogin = function() {
+        const input = document.getElementById('tokenInput').value.trim();
+        if (!input.startsWith('ghp_') && !input.startsWith('github_pat_')) {
+            alert('Token 格式看起来不对 (通常以 ghp_ 开头)');
+            return;
+        }
+        localStorage.setItem('gh_drive_token', input);
+        userToken = input;
+        checkLogin(false);
     };
-    window.logout = () => location.reload();
+
+    function checkLogin(isAuto) {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('driveApp').classList.remove('hidden');
+        refreshDrive().catch(err => {
+            if(err.message.includes('401') || err.message.includes('Bad credentials')) {
+                alert('Token 无效或已过期，请重新输入');
+                logout();
+            }
+        });
+    }
+
+    window.logout = () => {
+        localStorage.removeItem('gh_drive_token');
+        location.reload();
+    };
+    
     window.refreshDrive = refreshDrive;
     window.navigateTo = navigateTo;
     window.createNewFolder = createNewFolder;
@@ -157,11 +191,13 @@
 
     // --- GitHub API 核心 ---
     async function apiCall(endpoint, method = 'GET', body = null) {
+        if (!userToken) throw new Error("No token provided");
+        
         // 防止双斜杠
         const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
         const url = `https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents/${cleanEndpoint}`;
         const headers = {
-            'Authorization': `token ${GITHUB_CONFIG.token}`,
+            'Authorization': `token ${userToken}`,
             'Accept': 'application/vnd.github.v3+json'
         };
         const options = { method, headers };
@@ -171,6 +207,7 @@
         // GitHub API 删除成功返回 200, 上传成功返回 201
         if (!res.ok && res.status !== 404) {
             const err = await res.json().catch(()=>({}));
+            // 抛出具体错误以便捕获
             throw new Error(err.message || `GitHub API Error: ${res.status}`);
         }
         return res.status === 404 ? null : await res.json();
@@ -183,7 +220,14 @@
         try {
             const data = await apiCall(currentPath);
             renderFileList(Array.isArray(data) ? data : []);
-        } catch (error) { console.error(error); alert('加载失败: ' + error.message); }
+        } catch (error) { 
+            console.error(error); 
+            // 如果是 401，UI 已经在 checkLogin 里处理了，这里只是显示
+            if (!error.message.includes('401')) {
+                alert('加载失败: ' + error.message); 
+            }
+            throw error; // 继续抛出给调用者
+        }
         loading.classList.add('hidden');
     }
 
