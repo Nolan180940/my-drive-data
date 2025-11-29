@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GitHub 网盘</title>
+  <title>GitHub 无限网盘 Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
@@ -17,63 +17,54 @@
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen w-screen overflow-hidden flex flex-col font-sans">
 
-  <!-- ================= 1. 登录锁 (保护你的网盘界面) ================= -->
+  <!-- ================= 1. 登录锁 ================= -->
   <div id="loginOverlay" class="fixed inset-0 z-[100] bg-slate-100 flex items-center justify-center hidden">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
       <div class="mb-6 text-slate-800 flex justify-center"><i class="ph ph-github-logo text-6xl"></i></div>
       <h2 class="text-2xl font-bold mb-2">配置 GitHub 令牌</h2>
-      <p class="text-gray-400 text-sm mb-4">为了安全，请在此输入 Token，不要写在代码里</p>
-      <div class="text-left text-xs text-gray-400 mb-2 space-y-1">
-          <p>1. 在 GitHub Settings -> Developer settings 申请</p>
-          <p>2. 权限勾选 <b>repo</b></p>
-          <p>3. 粘贴以 <b>ghp_</b> 开头的密钥</p>
-      </div>
+      <p class="text-gray-400 text-sm mb-4">为了安全，请在此输入 Token</p>
       <input type="password" id="tokenInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-slate-800 transition font-mono text-sm" placeholder="ghp_xxxxxxxxxxxx">
       <button onclick="saveTokenAndLogin()" class="w-full bg-slate-800 hover:bg-black text-white font-bold py-3 rounded-lg transition shadow-lg">保存并登录</button>
     </div>
   </div>
 
-  <!-- ================= 2. 预览模式 (分享给别人的界面) ================= -->
+  <!-- ================= 2. 预览模式 ================= -->
   <div id="viewerContainer" class="fixed inset-0 z-[50] bg-black hidden flex flex-col">
     <div class="h-14 bg-black/50 backdrop-blur-md flex items-center justify-between px-4 text-white absolute top-0 w-full z-10">
-      <div class="flex items-center gap-2 truncate">
+      <div class="flex items-center gap-2 truncate max-w-[60%]">
         <i class="ph ph-file text-xl"></i>
         <span id="previewFileName" class="font-medium truncate">Filename.ext</span>
       </div>
       <div class="flex gap-2">
-        <a id="downloadBtn" href="#" class="p-2 hover:bg-white/20 rounded-full transition" title="下载" download><i class="ph ph-download-simple text-xl"></i></a>
-        <button onclick="exitPreview()" class="p-2 hover:bg-white/20 rounded-full transition" title="进入网盘"><i class="ph ph-house text-xl"></i></button>
+        <!-- 下载按钮改为触发 JS 函数 -->
+        <button id="downloadBtn" onclick="triggerDownload()" class="p-2 hover:bg-white/20 rounded-full transition" title="强制下载"><i class="ph ph-download-simple text-xl"></i></button>
+        <button onclick="exitPreview()" class="p-2 hover:bg-white/20 rounded-full transition" title="关闭"><i class="ph ph-x text-xl"></i></button>
       </div>
     </div>
-    <div id="previewContent" class="flex-1 flex items-center justify-center overflow-auto p-4 pt-16"></div>
+    <div id="previewContent" class="flex-1 flex items-center justify-center overflow-auto p-4 pt-16 bg-neutral-900"></div>
   </div>
 
-  <!-- ================= 3. 网盘主界面 (管理界面) ================= -->
+  <!-- ================= 3. 网盘主界面 ================= -->
   <div id="driveApp" class="flex-1 flex flex-col h-full hidden">
     <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
       <div class="flex items-center gap-3">
         <div class="bg-slate-800 text-white p-2 rounded-lg"><i class="ph ph-github-logo text-xl"></i></div>
-        <h1 class="text-xl font-bold tracking-tight text-slate-800">My Git Drive</h1>
+        <h1 class="text-xl font-bold tracking-tight text-slate-800 hidden sm:block">My Git Drive</h1>
       </div>
-      <div class="flex items-center gap-4">
-        
-        <!-- 上传文件 -->
+      <div class="flex items-center gap-2 sm:gap-4">
         <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full font-medium transition shadow-md shadow-blue-100 flex items-center gap-2 text-sm">
-            <i class="ph ph-file-plus text-lg"></i><span>上传文件</span>
+            <i class="ph ph-file-plus text-lg"></i><span class="hidden sm:inline">上传文件</span>
             <input type="file" id="fileUploader" class="hidden" multiple>
         </label>
-
-        <!-- 上传文件夹 (新增支持) -->
         <label class="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full font-medium transition shadow-md shadow-indigo-100 flex items-center gap-2 text-sm">
-            <i class="ph ph-folder-plus text-lg"></i><span>上传文件夹</span>
+            <i class="ph ph-folder-plus text-lg"></i><span class="hidden sm:inline">文件夹</span>
             <input type="file" id="folderUploader" class="hidden" webkitdirectory directory multiple>
         </label>
-
         <button onclick="createNewFolder()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-full font-medium transition flex items-center gap-2 text-sm">
-            <i class="ph ph-folder-simple-plus text-lg"></i><span>新建文件夹</span>
+            <i class="ph ph-folder-simple-plus text-lg"></i><span class="hidden sm:inline">新建</span>
         </button>
         <div class="w-px h-8 bg-slate-200 mx-2"></div>
-        <button onclick="logout()" class="text-slate-400 hover:text-red-500 transition" title="退出/更换Token"><i class="ph ph-sign-out text-xl"></i></button>
+        <button onclick="logout()" class="text-slate-400 hover:text-red-500 transition" title="退出"><i class="ph ph-sign-out text-xl"></i></button>
       </div>
     </header>
 
@@ -83,17 +74,17 @@
                 <button onclick="navigateTo('')" class="w-full flex items-center gap-3 px-4 py-3 bg-slate-200 text-slate-800 rounded-lg font-medium"><i class="ph ph-hard-drives text-lg"></i> 全部文件</button>
             </nav>
             <div class="mt-auto p-4 bg-slate-100 rounded-xl">
-                <div class="flex items-center gap-2 text-sm text-slate-500 mb-2"><i class="ph ph-database"></i> 仓库空间</div>
-                <div class="text-xs text-slate-400">推荐单个仓库 < 1GB<br>单文件 < 50MB (API限制)</div>
+                <div class="flex items-center gap-2 text-sm text-slate-500 mb-2"><i class="ph ph-database"></i> 仓库状态</div>
+                <div class="text-xs text-slate-400">若预览失败请等待几分钟<br>GitHub Raw 缓存时间较短</div>
             </div>
         </aside>
 
         <main class="flex-1 flex flex-col bg-white overflow-hidden relative">
             <div class="h-14 border-b border-slate-100 flex items-center px-6 gap-2 text-sm text-slate-600 flex-shrink-0">
                 <button onclick="navigateTo('')" class="hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition"><i class="ph ph-house"></i> 根目录</button>
-                <div id="breadcrumbs" class="flex items-center gap-1"></div>
+                <div id="breadcrumbs" class="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide"></div>
                 <div class="ml-auto flex items-center gap-2">
-                    <span id="loadingIndicator" class="hidden flex items-center gap-2 text-blue-500 bg-blue-50 px-3 py-1 rounded-full text-xs"><div class="loader !w-3 !h-3 !border-2"></div> 请求中...</span>
+                    <span id="loadingIndicator" class="hidden flex items-center gap-2 text-blue-500 bg-blue-50 px-3 py-1 rounded-full text-xs"><div class="loader !w-3 !h-3 !border-2"></div></span>
                     <button onclick="refreshDrive()" class="p-2 hover:bg-slate-100 rounded-lg transition" title="刷新"><i class="ph ph-arrows-clockwise text-lg"></i></button>
                 </div>
             </div>
@@ -103,12 +94,12 @@
                     <i class="ph ph-folder-open text-6xl mb-4"></i><p>文件夹是空的</p>
                 </div>
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 folder-section hidden">Folders</h3>
-                <div id="foldersGrid" class="folder-grid mb-8"></div>
+                <div id="foldersGrid" class="folder-grid mb-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 file-section hidden">Files</h3>
-                <div id="filesGrid" class="folder-grid"></div>
+                <div id="filesGrid" class="folder-grid grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
             </div>
 
-            <!-- 上传进度悬浮窗 -->
+            <!-- 悬浮上传进度 -->
             <div id="uploadProgress" class="absolute bottom-6 right-6 bg-white shadow-2xl border border-slate-100 p-4 rounded-xl w-80 hidden z-20">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-sm font-bold text-slate-700">正在上传...</span>
@@ -124,41 +115,42 @@
   </div>
 
 <script>
-    // ================= 配置区 (请修改这里！) =================
+    // ================= 配置区 =================
     const GITHUB_CONFIG = {
-        username: "Nolan180940",     // 例如: "Nolan"
-        repo: "my-drive-data",          // 你创建的用于存文件的Public仓库名
-        branch: "main"                  // 分支名
-        // 注意：Token 不再写在这里！
+        username: "你的GitHub用户名",     
+        repo: "my-drive-data",          
+        branch: "main"
     };
-    // ======================================================
+    // =========================================
 
     let currentPath = ''; 
-    let userToken = ''; // Token 将存储在这里
+    let userToken = '';
+    let currentPreviewPath = ''; // 用于下载功能
 
-    // 初始化检查
+    // 初始化
     const params = new URLSearchParams(window.location.search);
     const shareFile = params.get('f');
 
     if (shareFile) { 
+        // 尝试加载Token以获得更高的API限额，没有也行(如果是公开仓库)
+        const savedToken = localStorage.getItem('gh_drive_token');
+        if(savedToken) userToken = savedToken;
         showViewer(shareFile); 
     } else {
-        // 尝试从本地存储加载 Token
         const savedToken = localStorage.getItem('gh_drive_token');
         if (savedToken) {
             userToken = savedToken;
-            checkLogin(true); // 自动登录
+            checkLogin(true);
         } else {
             document.getElementById('loginOverlay').classList.remove('hidden'); 
         }
     }
 
-    // 认证与导航
+    // 认证与基础功能
     window.saveTokenAndLogin = function() {
         const input = document.getElementById('tokenInput').value.trim();
         if (!input.startsWith('ghp_') && !input.startsWith('github_pat_')) {
-            alert('Token 格式看起来不对 (通常以 ghp_ 开头)');
-            return;
+            alert('Token 格式看起来不对'); return;
         }
         localStorage.setItem('gh_drive_token', input);
         userToken = input;
@@ -170,50 +162,80 @@
         document.getElementById('driveApp').classList.remove('hidden');
         refreshDrive().catch(err => {
             if(err.message.includes('401') || err.message.includes('Bad credentials')) {
-                alert('Token 无效或已过期，请重新输入');
-                logout();
+                alert('Token 无效'); logout();
             }
         });
     }
 
-    window.logout = () => {
-        localStorage.removeItem('gh_drive_token');
-        location.reload();
-    };
-    
+    window.logout = () => { localStorage.removeItem('gh_drive_token'); location.reload(); };
     window.refreshDrive = refreshDrive;
     window.navigateTo = navigateTo;
     window.createNewFolder = createNewFolder;
     window.deleteItem = deleteItem;
+    window.deleteFolder = deleteFolder; // 新增：删除文件夹
     window.openSharePreview = openSharePreview;
     window.copyLink = copyLink;
     window.exitPreview = () => window.location.href = window.location.href.split('?')[0];
-
-    // --- GitHub API 核心 ---
-    async function apiCall(endpoint, method = 'GET', body = null) {
-        if (!userToken) throw new Error("No token provided");
+    
+    // 新增：触发下载
+    window.triggerDownload = async function() {
+        if (!currentPreviewPath) return;
+        const btn = document.getElementById('downloadBtn');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<div class="loader !w-4 !h-4 !border-white"></div>'; // Loading state
         
-        // 防止双斜杠
+        try {
+            // 使用 API 获取数据 (绕过 CDN 缓存和 CORS)
+            const data = await apiCall(currentPreviewPath);
+            if (!data.content) throw new Error("无法获取文件内容");
+            
+            // Base64 转 Blob
+            const byteCharacters = atob(data.content);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray]);
+            
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = data.name;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (e) {
+            alert("下载失败: " + e.message);
+            // 降级策略：尝试直接打开 raw 链接
+            window.open(getRawUrl(currentPreviewPath), '_blank');
+        } finally {
+            btn.innerHTML = originalHtml;
+        }
+    };
+
+    // --- API 核心 ---
+    async function apiCall(endpoint, method = 'GET', body = null) {
+        // 如果没有 Token 但处于预览模式，尝试匿名访问(可能会受限)
+        const headers = { 'Accept': 'application/vnd.github.v3+json' };
+        if (userToken) headers['Authorization'] = `token ${userToken}`;
+        
         const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
         const url = `https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents/${cleanEndpoint}`;
-        const headers = {
-            'Authorization': `token ${userToken}`,
-            'Accept': 'application/vnd.github.v3+json'
-        };
         const options = { method, headers };
         if (body) options.body = JSON.stringify(body);
         
         const res = await fetch(url, options);
-        // GitHub API 删除成功返回 200, 上传成功返回 201
         if (!res.ok && res.status !== 404) {
             const err = await res.json().catch(()=>({}));
-            // 抛出具体错误以便捕获
-            throw new Error(err.message || `GitHub API Error: ${res.status}`);
+            throw new Error(err.message || `API Error: ${res.status}`);
         }
         return res.status === 404 ? null : await res.json();
     }
 
-    // 刷新列表
+    // --- 列表渲染 ---
     async function refreshDrive() {
         const loading = document.getElementById('loadingIndicator');
         loading.classList.remove('hidden');
@@ -222,11 +244,7 @@
             renderFileList(Array.isArray(data) ? data : []);
         } catch (error) { 
             console.error(error); 
-            // 如果是 401，UI 已经在 checkLogin 里处理了，这里只是显示
-            if (!error.message.includes('401')) {
-                alert('加载失败: ' + error.message); 
-            }
-            throw error; // 继续抛出给调用者
+            if (!error.message.includes('401')) alert('加载失败: ' + error.message); 
         }
         loading.classList.add('hidden');
     }
@@ -236,7 +254,6 @@
         const filesGrid = document.getElementById('filesGrid');
         foldersGrid.innerHTML = ''; filesGrid.innerHTML = '';
 
-        // 过滤掉 .gitkeep
         const validItems = items.filter(i => i.name !== '.gitkeep');
 
         if (!validItems.length) {
@@ -247,8 +264,7 @@
         }
         document.getElementById('emptyState').classList.add('hidden');
 
-        let hasFolder = false;
-        let hasFile = false;
+        let hasFolder = false, hasFile = false;
 
         validItems.forEach(item => {
             const div = document.createElement('div');
@@ -256,7 +272,13 @@
 
             if (item.type === 'dir') {
                 hasFolder = true;
-                div.innerHTML = `<i class="ph-fill ph-folder text-blue-500 text-5xl mb-3"></i><span class="text-sm font-medium text-slate-700 truncate w-full px-2">${item.name}</span>`;
+                div.innerHTML = `
+                    <i class="ph-fill ph-folder text-blue-500 text-5xl mb-3"></i>
+                    <span class="text-sm font-medium text-slate-700 truncate w-full px-2">${item.name}</span>
+                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                         <!-- 文件夹删除按钮 -->
+                         <button onclick="event.stopPropagation(); deleteFolder('${item.path}')" class="p-1.5 hover:bg-red-100 text-red-500 rounded" title="删除文件夹"><i class="ph ph-trash"></i></button>
+                    </div>`;
                 div.onclick = () => navigateTo(item.path);
                 foldersGrid.appendChild(div);
             } else {
@@ -264,9 +286,11 @@
                 const ext = item.name.split('.').pop().toUpperCase();
                 let iconClass = 'ph-file-text', colorClass = 'text-slate-500';
                 if (['JPG','PNG','JPEG','GIF','WEBP'].includes(ext)) { iconClass = 'ph-image'; colorClass = 'text-purple-500'; }
-                if (['PDF'].includes(ext)) { iconClass = 'ph-file-pdf'; colorClass = 'text-red-500'; }
-                if (['MP4','MOV'].includes(ext)) { iconClass = 'ph-film-strip'; colorClass = 'text-pink-500'; }
-                if (['ZIP','RAR'].includes(ext)) { iconClass = 'ph-file-zip'; colorClass = 'text-orange-500'; }
+                else if (['PDF'].includes(ext)) { iconClass = 'ph-file-pdf'; colorClass = 'text-red-500'; }
+                else if (['MP4','MOV','WEBM'].includes(ext)) { iconClass = 'ph-film-strip'; colorClass = 'text-pink-500'; }
+                else if (['ZIP','RAR','7Z'].includes(ext)) { iconClass = 'ph-file-zip'; colorClass = 'text-orange-500'; }
+                else if (['DOC','DOCX','XLS','XLSX','PPT','PPTX'].includes(ext)) { iconClass = 'ph-microsoft-word-logo'; colorClass = 'text-blue-700'; }
+                else if (['TXT','MD','JS','JSON','HTML','CSS','PY'].includes(ext)) { iconClass = 'ph-code'; colorClass = 'text-green-600'; }
 
                 div.innerHTML = `
                     <i class="ph-fill ${iconClass} ${colorClass} text-5xl mb-3"></i>
@@ -295,22 +319,21 @@
         parts.forEach((part, i) => {
             buildPath += (i === 0 ? '' : '/') + part;
             const span = document.createElement('span');
-            span.className = 'flex items-center gap-1 text-slate-400';
+            span.className = 'flex items-center gap-1 text-slate-400 flex-shrink-0';
             span.innerHTML = `<i class="ph ph-caret-right text-xs"></i> <button onclick="navigateTo('${buildPath}')" class="hover:text-blue-600 hover:underline text-slate-600 font-medium">${part}</button>`;
             bc.appendChild(span);
         });
     }
 
+    // --- 操作逻辑 ---
     async function createNewFolder() {
         const name = prompt("文件夹名称:");
         if (!name) return;
-        // GitHub Trick: 创建一个 .gitkeep 文件来占位
         const path = currentPath ? `${currentPath}/${name}/.gitkeep` : `${name}/.gitkeep`;
         try {
-            // 上传一个空内容的 base64
             await apiCall(path, 'PUT', {
                 message: `Create folder ${name}`,
-                content: "", // 空内容 base64
+                content: "", 
                 branch: GITHUB_CONFIG.branch
             });
             refreshDrive();
@@ -321,7 +344,7 @@
         if (!confirm('确定删除?')) return;
         try {
             await apiCall(path, 'DELETE', {
-                message: "Delete via Web Drive",
+                message: "Delete item",
                 sha: sha,
                 branch: GITHUB_CONFIG.branch
             });
@@ -329,7 +352,41 @@
         } catch(e) { alert("删除失败: " + e.message); }
     }
 
-    // --- 上传逻辑 (文件 + 文件夹递归) ---
+    // 递归删除文件夹
+    async function deleteFolder(path) {
+        if (!confirm(`警告：这将删除 "${path}" 下的所有文件！确定继续？`)) return;
+        
+        const loading = document.getElementById('loadingIndicator');
+        loading.classList.remove('hidden');
+        
+        try {
+            // 1. 获取文件夹下所有内容
+            const items = await apiCall(path);
+            if (!Array.isArray(items)) throw new Error("无法读取文件夹内容");
+
+            // 2. 循环删除所有内容
+            for (const item of items) {
+                if (item.type === 'dir') {
+                    // 递归删除子文件夹
+                    await deleteFolder(item.path); 
+                } else {
+                    // 删除文件
+                    await apiCall(item.path, 'DELETE', {
+                        message: `Recursive delete ${item.name}`,
+                        sha: item.sha,
+                        branch: GITHUB_CONFIG.branch
+                    });
+                }
+            }
+            refreshDrive();
+        } catch (e) {
+            alert("文件夹删除部分失败: " + e.message);
+        } finally {
+            loading.classList.add('hidden');
+        }
+    }
+
+    // --- 上传逻辑 ---
     document.getElementById('fileUploader').addEventListener('change', (e) => handleUpload(e.target.files));
     document.getElementById('folderUploader').addEventListener('change', (e) => handleUpload(e.target.files, true));
 
@@ -339,13 +396,8 @@
         let completed = 0;
         
         for (let file of files) {
-            // 限制大小
-            if (file.size > 30 * 1024 * 1024) {
-                console.warn(`Skip large file: ${file.name}`);
-                continue;
-            }
+            if (file.size > 50 * 1024 * 1024) { console.warn(`Skip large file: ${file.name}`); continue; }
 
-            // 计算路径
             let uploadPath;
             if (isFolder && file.webkitRelativePath) {
                 uploadPath = currentPath ? `${currentPath}/${file.webkitRelativePath}` : file.webkitRelativePath;
@@ -357,9 +409,7 @@
             
             try {
                 const base64Content = await toBase64(file);
-                // 检查是否存在 (覆盖需要 SHA)
                 const existing = await apiCall(uploadPath).catch(()=>null);
-                
                 await apiCall(uploadPath, 'PUT', {
                     message: `Upload ${file.name}`,
                     content: base64Content,
@@ -382,14 +432,15 @@
         reader.onerror = error => reject(error);
     });
 
-    // --- 预览/分享 (jsDelivr 加速) ---
-    function getPublicUrl(path) {
-        // 直连 jsDelivr CDN
-        return `https://cdn.jsdelivr.net/gh/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}@${GITHUB_CONFIG.branch}/${encodeURI(path)}`;
+    // --- 预览与工具 ---
+    function getRawUrl(path) {
+        // 使用 GitHub Raw，因为它更新最快，适合预览
+        return `https://raw.githubusercontent.com/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${encodeURI(path)}`;
     }
 
     function openSharePreview(path) {
         const baseUrl = window.location.href.split('?')[0];
+        const shareLink = `${baseUrl}?f=${encodeURIComponent(path)}`;
         showViewer(path);
     }
 
@@ -399,37 +450,59 @@
         navigator.clipboard.writeText(shareLink).then(() => alert("分享链接已复制!"));
     }
 
-    function showViewer(path) {
+    async function showViewer(path) {
         const decodedPath = decodeURIComponent(path);
+        currentPreviewPath = decodedPath; // 供下载使用
+
         document.getElementById('loginOverlay').classList.add('hidden');
         document.getElementById('driveApp').classList.add('hidden');
         document.getElementById('viewerContainer').classList.remove('hidden');
         document.getElementById('previewFileName').innerText = decodedPath.split('/').pop();
 
-        const publicUrl = getPublicUrl(decodedPath);
-        document.getElementById('downloadBtn').href = publicUrl;
-
+        const rawUrl = getRawUrl(decodedPath);
         const contentDiv = document.getElementById('previewContent');
         const ext = decodedPath.split('.').pop().toLowerCase();
-        let html = '';
         
-        // 增加 loading
-        contentDiv.innerHTML = '<div class="loader"></div>';
+        contentDiv.innerHTML = '<div class="loader !w-8 !h-8 !border-white"></div>';
 
-        const imgExts = ['jpg','jpeg','png','gif','webp','svg'];
-        const vidExts = ['mp4','webm','mov'];
-        const pdfExts = ['pdf'];
-
-        if (imgExts.includes(ext)) {
-            html = `<img src="${publicUrl}" class="max-w-full max-h-full shadow-2xl rounded-lg" />`;
-        } else if (vidExts.includes(ext)) {
-            html = `<video controls autoplay class="max-w-full max-h-[80vh] shadow-2xl rounded-lg"><source src="${publicUrl}"></video>`;
-        } else if (pdfExts.includes(ext)) {
-            html = `<iframe src="${publicUrl}" class="w-full h-full bg-white rounded-lg shadow-2xl"></iframe>`;
-        } else {
-            html = `<div class="text-center text-white"><p class="text-xl mb-6">无法直接预览</p><a href="${publicUrl}" download class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold">下载文件</a></div>`;
+        // 1. Office 文档预览 (使用微软接口)
+        if (['doc','docx','xls','xlsx','ppt','pptx'].includes(ext)) {
+            // Office Viewer 需要 encodeURIComponent 的 URL
+            const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(rawUrl)}`;
+            contentDiv.innerHTML = `<iframe src="${officeUrl}" class="w-full h-full bg-white border-none"></iframe>`;
+        } 
+        // 2. 图片/视频/PDF (浏览器原生)
+        else if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) {
+            contentDiv.innerHTML = `<img src="${rawUrl}" class="max-w-full max-h-full shadow-2xl rounded-lg" />`;
+        } else if (['mp4','webm','mov'].includes(ext)) {
+            contentDiv.innerHTML = `<video controls autoplay class="max-w-full max-h-[80vh] shadow-2xl rounded-lg"><source src="${rawUrl}"></video>`;
+        } else if (['pdf'].includes(ext)) {
+            contentDiv.innerHTML = `<iframe src="${rawUrl}" class="w-full h-full bg-white rounded-lg shadow-2xl"></iframe>`;
+        } 
+        // 3. 文本/代码预览 (fetch 内容后显示)
+        else if (['txt','md','js','json','html','css','py','java','c','cpp','sql','sh','xml','yaml','yml'].includes(ext)) {
+            try {
+                // 尝试 fetch 文本内容
+                let textContent = "加载中...";
+                if (userToken) {
+                    // 有 Token 走 API，避免 Raw 缓存延迟
+                    const data = await apiCall(decodedPath);
+                    textContent = atob(data.content); // Base64 decode
+                    // 解决中文乱码
+                    textContent = decodeURIComponent(escape(textContent));
+                } else {
+                    const res = await fetch(rawUrl);
+                    textContent = await res.text();
+                }
+                
+                contentDiv.innerHTML = `<pre class="bg-gray-800 text-gray-200 p-6 rounded-lg overflow-auto w-full h-full text-sm font-mono whitespace-pre-wrap">${textContent.replace(/</g, '&lt;')}</pre>`;
+            } catch (e) {
+                contentDiv.innerHTML = `<div class="text-white">无法读取文本内容: ${e.message}</div>`;
+            }
         }
-        setTimeout(() => { contentDiv.innerHTML = html; }, 500);
+        else {
+            contentDiv.innerHTML = `<div class="text-center text-white"><p class="text-xl mb-6">此格式无法直接预览</p><button onclick="triggerDownload()" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold">下载文件</button></div>`;
+        }
     }
 
     function formatSize(bytes) {
